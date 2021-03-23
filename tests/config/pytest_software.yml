@@ -178,6 +178,10 @@ gatk4_bedtointervallist:
   - software/gatk4/bedtointervallist/**
   - tests/software/gatk4/bedtointervallist/**
 
+gatk4_calculatecontamination:
+  - software/gatk4/calculatecontamination/**
+  - tests/software/gatk4/calculatecontamination/**
+
 gatk4_createsequencedictionary:
   - software/gatk4/createsequencedictionary/**
   - tests/software/gatk4/createsequencedictionary/**

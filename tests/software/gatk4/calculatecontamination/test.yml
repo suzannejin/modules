@@ -1,0 +1,8 @@
+- name: gatk4 calculatecontamination
+  command: nextflow run ./tests/software/gatk4/calculatecontamination -entry test_gatk4_calculatecontamination -c tests/config/nextflow.config
+  tags:
+    - gatk4
+    - gatk4_calculatecontamination
+  files:
+    - path: output/gatk4/test.contamination.table
+      md5sum: e667c7caad0bc4b7ac383fd023c654fc
