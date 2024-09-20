@@ -1,7 +1,7 @@
 name: "propr_propr"
 description: |
   Perform logratio-based correlation analysis -> get proportionality & basis shrinkage partial correlation coefficients.
-  One can also compute standard correlation coefficients, if required.
+  One can also compute standard correlation coefficients.
 keywords:
   - coexpression
   - correlation
