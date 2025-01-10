@@ -28,7 +28,7 @@ process EDGER_DIFFERENTIAL {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bioconductor-edger: \$(Rscript -e "library(edger); cat(as.character(packageVersion('edger')))")
+        bioconductor-edger: \$(Rscript -e "library(edgeR); cat(as.character(packageVersion('edgeR')))")
     END_VERSIONS
     """
 }
