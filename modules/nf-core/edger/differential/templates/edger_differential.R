@@ -78,30 +78,32 @@ read_delim_flexible <- function(file, header = TRUE, row.names = 1, check.names 
 # Set defaults and classes
 
 opt <- list(
-    prefix             = ifelse('$task.ext.prefix' == 'null', '$meta.id', '$task.ext.prefix'),
+    output_prefix             = ifelse('$task.ext.prefix' == 'null', '$meta.id', '$task.ext.prefix'),
 
-    # input count matrix
-    counts             = '$counts',
-    features_id_col    = 'gene_id',            # column name of feature ids
+    # input files
+    count_file                = '$counts',
+    sample_file               = '$samplesheet',
+
+    # features and sample columns
+    features_id_col           = 'gene_id',                  # column name of feature ids
+    obs_id_col                = 'sample',                   # column name of observation ids
 
     # comparison groups
-    samplesheet        = '$samplesheet',
-    obs_id_col         = 'sample',             # column name of observation ids
-    contrast_variable  = "$contrast_variable", # column name of contrast variable
-    reference_group    = "$reference",         # reference group for contrast variable
-    target_group       = "$target",            # target group for contrast variable
-    blocking_variables = NULL                  # column name of blocking variables
+    contrast_variable         = "$contrast_variable",       # column name of contrast variable
+    reference_group           = "$reference",               # reference group for contrast variable
+    target_group              = "$target",                  # target group for contrast variable
+    blocking_variables        = NULL                        # column name of blocking variables
 
     # other parameters
-    round_digits       = NA,                   # number of digits to round results
-    ncores             = as.integer('$task.cpus')
+    round_digits              = NA,                         # number of digits to round results
+    ncores                    = as.integer('$task.cpus')    # number of cpus
 )
 
 opt_types <- list(
-    prefix             = 'character',
-    counts             = 'character',
+    output_prefix      = 'character',
+    count_file         = 'character',
+    sample_file        = 'character',
     features_id_col    = 'character',
-    samplesheet        = 'character',
     obs_id_col         = 'character',
     contrast_variable  = 'character',
     reference_group    = 'character',
@@ -133,7 +135,7 @@ for ( ao in names(args_opt)){
 
 # Check if required parameters have been provided
 
-required_opts <- c('counts','samplesheet','contrast_variable','reference_group','target_group', 'prefix')
+required_opts <- c('count_file','sample_file','contrast_variable','reference_group','target_group', 'prefix')
 missing <- required_opts[unlist(lapply(opt[required_opts], is.null)) | ! required_opts %in% names(opt)]
 if (length(missing) > 0){
     stop(paste("Missing required options:", paste(missing, collapse=', ')))
@@ -141,7 +143,7 @@ if (length(missing) > 0){
 
 # Check file inputs are valid
 
-for (file_input in c('counts','samplesheet')){
+for (file_input in c('count_file','sample_file')){
     if (! is.is_valid_string(opt[[file_input]])) {
         stop(paste("Please provide", file_input), call. = FALSE)
     }
@@ -160,15 +162,66 @@ library(edgeR)
 
 ################################################
 ################################################
-## Load data                                  ##
+## READ IN COUNTS FILE AND SAMPLE METADATA    ##
 ################################################
 ################################################
 
+count.table <-
+    read_delim_flexible(
+        file = opt\$count_file,
+        header = TRUE,
+        row.names = opt\$gene_id_col,
+        check.names = FALSE
+    )
+sample.sheet <- read_delim_flexible(file = opt\$sample_file)
+
+# Deal with spaces that may be in sample column
+opt\$sample_id_col <- make.names(opt\$sample_id_col)
+
+if (! opt\$sample_id_col %in% colnames(sample.sheet)){
+    stop(paste0("Specified sample ID column '", opt\$sample_id_col, "' is not in the sample sheet"))
+}
+
+# Sample sheet can have duplicate rows for multiple sequencing runs, so uniqify
+# before assigning row names
+
+sample.sheet <- sample.sheet[! duplicated(sample.sheet[[opt\$sample_id_col]]), ]
+rownames(sample.sheet) <- sample.sheet[[opt\$sample_id_col]]
+
+# Check that all samples specified in the input sheet are present in the counts
+# table. Assuming they are, subset and sort the count table to match the sample
+# sheet
+
+missing_samples <-
+    sample.sheet[!rownames(sample.sheet) %in% colnames(count.table), opt\$sample_id_col]
+
+if (length(missing_samples) > 0) {
+    stop(paste(
+        length(missing_samples),
+        'specified samples missing from count table:',
+        paste(missing_samples, collapse = ',')
+    ))
+} else{
+    # Save any non-count data, will gene metadata etc we might need later
+    noncount.table <-
+        count.table[, !colnames(count.table) %in% rownames(sample.sheet), drop = FALSE]
+    count.table <- count.table[, rownames(sample.sheet)]
+}
+
 ################################################
 ################################################
-## Perform differential expression analysis   ##
+## Run edgeR processes                       ##
 ################################################
 ################################################
+
+# Create a DGEList object from counts
+
+dge <- DGEList(counts = count.table)
+
+# Normalize counts using TMM
+
+dge <- calcNormFactors(dge, method = "TMM")
+
 
 ################################################
 ################################################
